@@ -1,0 +1,14 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Traveler DB",
+      "Group": "Servers",
+      "Host": "db",
+      "Port": 5432,
+      "MaintenanceDB": "traveler_db",
+      "Username": "traveler",
+      "SSLMode": "prefer",
+      "PassFile": "/tmp/pgpassfile"
+    }
+  }
+}

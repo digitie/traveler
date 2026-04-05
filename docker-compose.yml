@@ -1,0 +1,140 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-traveler}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-traveler_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-traveler_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-traveler}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://traveler:traveler_secret@db:5432/traveler_db}
+      DATABASE_URL_SYNC: ${DATABASE_URL_SYNC:-postgresql://traveler:traveler_secret@db:5432/traveler_db}
+      DATA_GO_KR_API_KEY: ${DATA_GO_KR_API_KEY}
+      DATA_EX_API_KEY: ${DATA_EX_API_KEY}
+    volumes:
+      - ./backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      target: dev
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_KAKAO_MAP_API_KEY: ${NEXT_PUBLIC_KAKAO_MAP_API_KEY}
+      NEXT_PUBLIC_API_BASE: http://localhost:8000
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+    depends_on:
+      - backend
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: unless-stopped
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@traveler.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin_secret}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./pgadmin/servers.json:/pgadmin4/servers.json
+    depends_on:
+      db:
+        condition: service_healthy
+
+  airflow-init:
+    build:
+      context: ./airflow
+    entrypoint: /bin/bash
+    command: >
+      -c "
+        airflow db migrate &&
+        airflow users create
+          --username admin
+          --password admin
+          --firstname Admin
+          --lastname User
+          --role Admin
+          --email admin@traveler.local || true
+      "
+    environment:
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY:-81HqDtbqAywKSOumSha3BhWNOdQ26slT6K0YaZe3Zs8=}
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN:-postgresql://traveler:traveler_secret@db:5432/airflow_db}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  airflow-webserver:
+    build:
+      context: ./airflow
+    command: airflow webserver --port 8080
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY:-81HqDtbqAywKSOumSha3BhWNOdQ26slT6K0YaZe3Zs8=}
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN:-postgresql://traveler:traveler_secret@db:5432/airflow_db}
+      AIRFLOW__WEBSERVER__SECRET_KEY: traveler-airflow-secret
+      DATABASE_URL_SYNC: ${DATABASE_URL_SYNC:-postgresql://traveler:traveler_secret@db:5432/traveler_db}
+      DATA_GO_KR_API_KEY: ${DATA_GO_KR_API_KEY}
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+    depends_on:
+      db:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    build:
+      context: ./airflow
+    command: airflow scheduler
+    restart: unless-stopped
+    environment:
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY:-81HqDtbqAywKSOumSha3BhWNOdQ26slT6K0YaZe3Zs8=}
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN:-postgresql://traveler:traveler_secret@db:5432/airflow_db}
+      AIRFLOW__WEBSERVER__SECRET_KEY: traveler-airflow-secret
+      DATABASE_URL_SYNC: ${DATABASE_URL_SYNC:-postgresql://traveler:traveler_secret@db:5432/traveler_db}
+      DATA_GO_KR_API_KEY: ${DATA_GO_KR_API_KEY}
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+    depends_on:
+      db:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+
+volumes:
+  postgres_data:
+  pgadmin_data:

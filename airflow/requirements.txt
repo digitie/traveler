@@ -1,0 +1,6 @@
+apache-airflow==2.10.4
+apache-airflow-providers-postgres==5.13.1
+sqlalchemy==2.0.36
+psycopg2-binary==2.9.10
+geoalchemy2==0.15.2
+requests==2.32.3
