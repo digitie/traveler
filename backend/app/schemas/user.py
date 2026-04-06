@@ -20,6 +20,7 @@ class UserResponse(BaseModel):
     is_active: bool
     is_admin: bool
     telegram_chat_id: str | None = None
+    telegram_enabled: bool = True
     created_at: datetime
 
     class Config:
@@ -34,6 +35,13 @@ class UserUpdateAdmin(BaseModel):
 class UserUpdateMe(BaseModel):
     name: str | None = None
     telegram_chat_id: str | None = None
+    telegram_enabled: bool | None = None
+
+
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str
+    new_password_confirm: str
 
 
 class TokenResponse(BaseModel):

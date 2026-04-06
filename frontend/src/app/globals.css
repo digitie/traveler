@@ -113,6 +113,49 @@ input:disabled {
   color: #888;
 }
 
+.profile-modal {
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.profile-section {
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  padding: 12px 14px 14px;
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.profile-section legend {
+  padding: 0 6px;
+  font-size: 0.82rem;
+  color: #1a73e8;
+  font-weight: 600;
+}
+
+.toggle-row {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 8px !important;
+  font-size: 0.88rem !important;
+  color: #333 !important;
+}
+
+.toggle-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.profile-divider {
+  border: none;
+  border-top: 1px solid #eee;
+  margin: 18px 0;
+}
+
 .header-controls button {
   padding: 6px 12px;
   border: 1px solid rgba(255, 255, 255, 0.5);

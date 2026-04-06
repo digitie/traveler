@@ -9,6 +9,7 @@ export interface User {
   is_active: boolean;
   is_admin: boolean;
   telegram_chat_id: string | null;
+  telegram_enabled: boolean;
   created_at: string;
 }
 
@@ -154,9 +155,21 @@ export async function fetchMe(): Promise<User> {
 export async function updateMe(data: {
   name?: string;
   telegram_chat_id?: string;
+  telegram_enabled?: boolean;
 }): Promise<User> {
   return request<User>("/api/auth/me", {
     method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function changePassword(data: {
+  current_password: string;
+  new_password: string;
+  new_password_confirm: string;
+}): Promise<void> {
+  return request<void>("/api/auth/me/password", {
+    method: "POST",
     body: JSON.stringify(data),
   });
 }

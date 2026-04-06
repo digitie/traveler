@@ -142,6 +142,7 @@ def fetch_due_plans(db: Session, today: date) -> list[dict]:
         FROM travel_plans p
         JOIN users u ON u.id = p.user_id
         WHERE u.is_active = TRUE
+          AND COALESCE(u.telegram_enabled, TRUE) = TRUE
           AND u.telegram_chat_id IS NOT NULL
           AND p.end_date >= :today
           AND p.start_date <= :today + INTERVAL '7 days'
