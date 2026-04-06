@@ -8,6 +8,7 @@ export interface User {
   name: string | null;
   is_active: boolean;
   is_admin: boolean;
+  telegram_chat_id: string | null;
   created_at: string;
 }
 
@@ -148,6 +149,16 @@ export async function login(
 
 export async function fetchMe(): Promise<User> {
   return request<User>("/api/auth/me");
+}
+
+export async function updateMe(data: {
+  name?: string;
+  telegram_chat_id?: string;
+}): Promise<User> {
+  return request<User>("/api/auth/me", {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
 }
 
 // ============ Travel plans API ============

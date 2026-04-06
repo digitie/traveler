@@ -50,6 +50,22 @@ services:
     depends_on:
       - backend
 
+  telegram-bot:
+    build:
+      context: ./telegram-bot
+    restart: unless-stopped
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      DATABASE_URL_SYNC: ${DATABASE_URL_SYNC:-postgresql://traveler:traveler_secret@db:5432/traveler_db}
+      NOTIFY_INTERVAL_SECONDS: ${NOTIFY_INTERVAL_SECONDS:-3600}
+    volumes:
+      - ./telegram-bot:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      backend:
+        condition: service_started
+
   pgadmin:
     image: dpage/pgadmin4:latest
     restart: unless-stopped

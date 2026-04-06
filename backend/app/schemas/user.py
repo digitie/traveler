@@ -19,6 +19,7 @@ class UserResponse(BaseModel):
     name: str | None = None
     is_active: bool
     is_admin: bool
+    telegram_chat_id: str | None = None
     created_at: datetime
 
     class Config:
@@ -28,6 +29,11 @@ class UserResponse(BaseModel):
 class UserUpdateAdmin(BaseModel):
     is_active: bool | None = None
     is_admin: bool | None = None
+
+
+class UserUpdateMe(BaseModel):
+    name: str | None = None
+    telegram_chat_id: str | None = None
 
 
 class TokenResponse(BaseModel):

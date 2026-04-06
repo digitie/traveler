@@ -76,6 +76,43 @@ select {
   opacity: 0.85;
 }
 
+.link-button {
+  background: transparent !important;
+  border: none !important;
+  color: white !important;
+  font-size: 0.8rem !important;
+  opacity: 0.9;
+  padding: 4px 6px !important;
+  text-decoration: underline;
+}
+
+.link-button:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.hint-text {
+  font-size: 0.78rem;
+  color: #666;
+  background: #f5f6f8;
+  padding: 8px 10px;
+  border-radius: 5px;
+  line-height: 1.45;
+}
+
+.success {
+  color: #137333;
+  background: #e6f4ea;
+  padding: 8px 10px;
+  font-size: 0.83rem;
+  border-radius: 4px;
+}
+
+input:disabled {
+  background: #f0f0f0;
+  color: #888;
+}
+
 .header-controls button {
   padding: 6px 12px;
   border: 1px solid rgba(255, 255, 255, 0.5);

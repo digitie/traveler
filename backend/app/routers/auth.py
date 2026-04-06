@@ -11,7 +11,7 @@ from app.auth import (
 )
 from app.database import get_db
 from app.models.user import User
-from app.schemas.user import TokenResponse, UserCreate, UserResponse
+from app.schemas.user import TokenResponse, UserCreate, UserResponse, UserUpdateMe
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -68,4 +68,19 @@ async def login(
 
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user: User = Depends(get_current_user)):
+    return current_user
+
+
+@router.patch("/me", response_model=UserResponse)
+async def update_me(
+    payload: UserUpdateMe,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if payload.name is not None:
+        current_user.name = payload.name
+    if payload.telegram_chat_id is not None:
+        current_user.telegram_chat_id = payload.telegram_chat_id or None
+    await db.commit()
+    await db.refresh(current_user)
     return current_user
