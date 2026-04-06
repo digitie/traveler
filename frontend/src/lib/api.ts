@@ -1,5 +1,22 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "";
 
+// ============ Types ============
+
+export interface User {
+  id: number;
+  email: string;
+  name: string | null;
+  is_active: boolean;
+  is_admin: boolean;
+  created_at: string;
+}
+
+export interface TokenResponse {
+  access_token: string;
+  token_type: string;
+  user: User;
+}
+
 export interface WeatherForecast {
   id: number;
   base_date: string;
@@ -26,6 +43,203 @@ export interface RestAreaWeather {
   longitude: number | null;
   fetched_at: string;
 }
+
+export interface TravelPlan {
+  id: number;
+  title: string;
+  description: string | null;
+  start_date: string;
+  end_date: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TravelPlanSpot {
+  id: number;
+  plan_date: string | null;
+  order: number;
+  name: string;
+  description: string | null;
+  category: string | null;
+  address: string | null;
+  latitude: number;
+  longitude: number;
+  source: string | null;
+}
+
+export interface TravelPlanDetail extends TravelPlan {
+  user_id: number;
+  spots: TravelPlanSpot[];
+}
+
+// ============ Auth helpers ============
+
+const TOKEN_KEY = "traveler_token";
+
+export function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+export function setToken(token: string) {
+  localStorage.setItem(TOKEN_KEY, token);
+}
+
+export function clearToken() {
+  localStorage.removeItem(TOKEN_KEY);
+}
+
+async function request<T>(
+  path: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...((options.headers as Record<string, string>) || {}),
+  };
+  const token = getToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  if (!res.ok) {
+    let detail = `Request failed: ${res.status}`;
+    try {
+      const data = await res.json();
+      detail = data.detail || detail;
+    } catch {}
+    throw new Error(detail);
+  }
+  if (res.status === 204) return undefined as T;
+  return res.json();
+}
+
+// ============ Auth API ============
+
+export async function signup(
+  email: string,
+  password: string,
+  name?: string
+): Promise<TokenResponse> {
+  return request<TokenResponse>("/api/auth/signup", {
+    method: "POST",
+    body: JSON.stringify({ email, password, name }),
+  });
+}
+
+export async function login(
+  email: string,
+  password: string
+): Promise<TokenResponse> {
+  // OAuth2 password form requires form-urlencoded
+  const body = new URLSearchParams();
+  body.append("username", email);
+  body.append("password", password);
+  const res = await fetch(`${API_BASE}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || "Login failed");
+  }
+  return res.json();
+}
+
+export async function fetchMe(): Promise<User> {
+  return request<User>("/api/auth/me");
+}
+
+// ============ Travel plans API ============
+
+export async function fetchPlans(): Promise<TravelPlan[]> {
+  return request<TravelPlan[]>("/api/plans/");
+}
+
+export async function fetchPlan(id: number): Promise<TravelPlanDetail> {
+  return request<TravelPlanDetail>(`/api/plans/${id}`);
+}
+
+export async function createPlan(data: {
+  title: string;
+  description?: string;
+  start_date: string;
+  end_date: string;
+}): Promise<TravelPlanDetail> {
+  return request<TravelPlanDetail>("/api/plans/", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updatePlan(
+  id: number,
+  data: Partial<{
+    title: string;
+    description: string;
+    start_date: string;
+    end_date: string;
+  }>
+): Promise<TravelPlanDetail> {
+  return request<TravelPlanDetail>(`/api/plans/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deletePlan(id: number): Promise<void> {
+  return request<void>(`/api/plans/${id}`, { method: "DELETE" });
+}
+
+export async function addSpot(
+  planId: number,
+  spot: {
+    name: string;
+    latitude: number;
+    longitude: number;
+    description?: string;
+    category?: string;
+    address?: string;
+    plan_date?: string;
+    order?: number;
+  }
+): Promise<TravelPlanSpot> {
+  return request<TravelPlanSpot>(`/api/plans/${planId}/spots`, {
+    method: "POST",
+    body: JSON.stringify(spot),
+  });
+}
+
+export async function deleteSpot(
+  planId: number,
+  spotId: number
+): Promise<void> {
+  return request<void>(`/api/plans/${planId}/spots/${spotId}`, {
+    method: "DELETE",
+  });
+}
+
+// ============ Admin API ============
+
+export async function fetchUsers(): Promise<User[]> {
+  return request<User[]>("/api/admin/users");
+}
+
+export async function updateUser(
+  id: number,
+  data: { is_active?: boolean; is_admin?: boolean }
+): Promise<User> {
+  return request<User>(`/api/admin/users/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteUser(id: number): Promise<void> {
+  return request<void>(`/api/admin/users/${id}`, { method: "DELETE" });
+}
+
+// ============ Weather API ============
 
 export async function fetchWeatherForecast(
   nx: number,
@@ -79,31 +293,6 @@ export function latLngToGrid(lat: number, lng: number) {
   const x = Math.floor(ra * Math.sin(theta) + XO + 0.5);
   const y = Math.floor(ro - ra * Math.cos(theta) + YO + 0.5);
   return { nx: x, ny: y };
-}
-
-// 카테고리 코드 한글 변환
-export function getCategoryName(category: string): string {
-  const map: Record<string, string> = {
-    POP: "강수확률",
-    PTY: "강수형태",
-    PCP: "1시간 강수량",
-    REH: "습도",
-    SNO: "1시간 신적설",
-    SKY: "하늘상태",
-    TMP: "1시간 기온",
-    TMN: "일 최저기온",
-    TMX: "일 최고기온",
-    UUU: "풍속(동서)",
-    VVV: "풍속(남북)",
-    WAV: "파고",
-    VEC: "풍향",
-    WSD: "풍속",
-    T1H: "기온",
-    RN1: "1시간 강수량",
-    UUU_: "동서바람성분",
-    VVV_: "남북바람성분",
-  };
-  return map[category] || category;
 }
 
 export function getSkyStatus(value: string): string {

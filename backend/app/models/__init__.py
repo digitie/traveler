@@ -1,8 +1,10 @@
+from app.models.user import User
 from app.models.weather import WeatherForecast, RestAreaWeather
 from app.models.travel_plan import TravelPlan, TravelPlanSpot
 from app.models.tourism import TouristSpot, TouristRestaurant, TouristAccommodation
 
 __all__ = [
+    "User",
     "WeatherForecast",
     "RestAreaWeather",
     "TravelPlan",

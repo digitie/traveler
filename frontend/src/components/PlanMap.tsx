@@ -1,0 +1,288 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Map, MapMarker, CustomOverlayMap } from "react-kakao-maps-sdk";
+import {
+  TravelPlanDetail,
+  TravelPlanSpot,
+  fetchPlan,
+  addSpot,
+  deleteSpot,
+} from "@/lib/api";
+import AppHeader from "./AppHeader";
+
+interface Props {
+  planId: number;
+}
+
+interface PendingPoi {
+  lat: number;
+  lng: number;
+}
+
+export default function PlanMap({ planId }: Props) {
+  const router = useRouter();
+  const [plan, setPlan] = useState<TravelPlanDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [pendingPoi, setPendingPoi] = useState<PendingPoi | null>(null);
+  const [selectedSpot, setSelectedSpot] = useState<TravelPlanSpot | null>(null);
+  const [poiForm, setPoiForm] = useState({
+    name: "",
+    description: "",
+    category: "",
+    plan_date: "",
+  });
+  const [submitting, setSubmitting] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const data = await fetchPlan(planId);
+      setPlan(data);
+      if (!poiForm.plan_date) {
+        setPoiForm((f) => ({ ...f, plan_date: data.start_date }));
+      }
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planId]);
+
+  const handleRightClick = (
+    _map: kakao.maps.Map,
+    mouseEvent: kakao.maps.event.MouseEvent
+  ) => {
+    const latlng = mouseEvent.latLng;
+    setPendingPoi({ lat: latlng.getLat(), lng: latlng.getLng() });
+    setSelectedSpot(null);
+  };
+
+  const handleAddPoi = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pendingPoi || !plan) return;
+    if (!poiForm.name.trim()) {
+      setError("장소명을 입력해주세요");
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      await addSpot(plan.id, {
+        name: poiForm.name,
+        latitude: pendingPoi.lat,
+        longitude: pendingPoi.lng,
+        description: poiForm.description || undefined,
+        category: poiForm.category || undefined,
+        plan_date: poiForm.plan_date || undefined,
+      });
+      setPendingPoi(null);
+      setPoiForm({
+        name: "",
+        description: "",
+        category: "",
+        plan_date: plan.start_date,
+      });
+      await load();
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteSpot = async (spotId: number) => {
+    if (!plan) return;
+    if (!confirm("이 장소를 삭제하시겠습니까?")) return;
+    try {
+      await deleteSpot(plan.id, spotId);
+      setSelectedSpot(null);
+      await load();
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
+
+  if (loading) return <div className="page-loading">불러오는 중...</div>;
+  if (!plan) return <div className="page-loading">계획을 찾을 수 없습니다</div>;
+
+  // 지도 중심: 첫 spot 또는 한국 중심
+  const center =
+    plan.spots.length > 0
+      ? { lat: plan.spots[0].latitude, lng: plan.spots[0].longitude }
+      : { lat: 36.5, lng: 127.5 };
+
+  // 날짜 옵션
+  const dateOptions: string[] = [];
+  const start = new Date(plan.start_date);
+  const end = new Date(plan.end_date);
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    dateOptions.push(d.toISOString().slice(0, 10));
+  }
+
+  return (
+    <div className="container">
+      <AppHeader />
+      <div className="plan-detail-bar">
+        <button onClick={() => router.push("/plans")}>← 목록</button>
+        <div className="plan-detail-title">
+          <strong>{plan.title}</strong>
+          <span className="plan-detail-dates">
+            {plan.start_date} ~ {plan.end_date}
+          </span>
+        </div>
+        <div className="plan-detail-hint">
+          지도 우클릭 → 장소 추가 ({plan.spots.length}개 장소)
+        </div>
+      </div>
+
+      <div className="map-container">
+        {/* 좌측 사이드바: 장소 목록 */}
+        <aside className="spots-sidebar">
+          <h3>저장된 장소</h3>
+          {plan.spots.length === 0 ? (
+            <div className="empty-small">
+              지도를 우클릭하여 장소를 추가하세요
+            </div>
+          ) : (
+            <ul>
+              {plan.spots
+                .slice()
+                .sort((a, b) =>
+                  (a.plan_date || "").localeCompare(b.plan_date || "")
+                )
+                .map((s) => (
+                  <li key={s.id} onClick={() => setSelectedSpot(s)}>
+                    <div className="spot-name">{s.name}</div>
+                    {s.plan_date && (
+                      <div className="spot-date">{s.plan_date}</div>
+                    )}
+                  </li>
+                ))}
+            </ul>
+          )}
+        </aside>
+
+        <div className="map-area">
+          <Map
+            center={center}
+            level={9}
+            style={{ width: "100%", height: "100%" }}
+            onRightClick={handleRightClick}
+          >
+            {plan.spots.map((s) => (
+              <MapMarker
+                key={s.id}
+                position={{ lat: s.latitude, lng: s.longitude }}
+                onClick={() => setSelectedSpot(s)}
+              />
+            ))}
+
+            {selectedSpot && (
+              <CustomOverlayMap
+                position={{
+                  lat: selectedSpot.latitude,
+                  lng: selectedSpot.longitude,
+                }}
+                yAnchor={1.3}
+              >
+                <div className="info-overlay">
+                  <div className="info-title">{selectedSpot.name}</div>
+                  {selectedSpot.plan_date && (
+                    <div className="info-meta">📅 {selectedSpot.plan_date}</div>
+                  )}
+                  {selectedSpot.category && (
+                    <div className="info-meta">🏷 {selectedSpot.category}</div>
+                  )}
+                  {selectedSpot.description && (
+                    <div className="info-desc">{selectedSpot.description}</div>
+                  )}
+                  <div className="info-actions">
+                    <button onClick={() => handleDeleteSpot(selectedSpot.id)}>
+                      삭제
+                    </button>
+                    <button onClick={() => setSelectedSpot(null)}>닫기</button>
+                  </div>
+                </div>
+              </CustomOverlayMap>
+            )}
+
+            {pendingPoi && (
+              <CustomOverlayMap
+                position={{ lat: pendingPoi.lat, lng: pendingPoi.lng }}
+                yAnchor={1.3}
+              >
+                <div className="poi-form">
+                  <div className="info-title">새 장소 추가</div>
+                  <form onSubmit={handleAddPoi}>
+                    <input
+                      type="text"
+                      placeholder="장소명 *"
+                      value={poiForm.name}
+                      onChange={(e) =>
+                        setPoiForm({ ...poiForm, name: e.target.value })
+                      }
+                      required
+                      autoFocus
+                    />
+                    <select
+                      value={poiForm.plan_date}
+                      onChange={(e) =>
+                        setPoiForm({ ...poiForm, plan_date: e.target.value })
+                      }
+                    >
+                      <option value="">날짜 선택</option>
+                      {dateOptions.map((d) => (
+                        <option key={d} value={d}>
+                          {d}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      placeholder="카테고리 (예: 식당, 관광)"
+                      value={poiForm.category}
+                      onChange={(e) =>
+                        setPoiForm({ ...poiForm, category: e.target.value })
+                      }
+                    />
+                    <textarea
+                      placeholder="설명"
+                      value={poiForm.description}
+                      onChange={(e) =>
+                        setPoiForm({
+                          ...poiForm,
+                          description: e.target.value,
+                        })
+                      }
+                      rows={2}
+                    />
+                    {error && <div className="error">{error}</div>}
+                    <div className="info-actions">
+                      <button type="submit" disabled={submitting}>
+                        {submitting ? "저장 중..." : "추가"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPendingPoi(null)}
+                      >
+                        취소
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </CustomOverlayMap>
+            )}
+          </Map>
+        </div>
+      </div>
+    </div>
+  );
+}

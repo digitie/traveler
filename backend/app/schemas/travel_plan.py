@@ -1,9 +1,9 @@
 from datetime import date, datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class TravelPlanSpotCreate(BaseModel):
-    plan_date: date
+    plan_date: date | None = None
     order: int = 0
     name: str
     description: str | None = None
@@ -15,9 +15,20 @@ class TravelPlanSpotCreate(BaseModel):
     source_id: str | None = None
 
 
+class TravelPlanSpotUpdate(BaseModel):
+    plan_date: date | None = None
+    order: int | None = None
+    name: str | None = None
+    description: str | None = None
+    category: str | None = None
+    address: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+
+
 class TravelPlanSpotResponse(BaseModel):
     id: int
-    plan_date: date
+    plan_date: date | None = None
     order: int
     name: str
     description: str | None = None
@@ -32,14 +43,14 @@ class TravelPlanSpotResponse(BaseModel):
 
 
 class TravelPlanCreate(BaseModel):
-    title: str
+    title: str = Field(..., min_length=1, max_length=200)
     description: str | None = None
     start_date: date
     end_date: date
 
 
 class TravelPlanUpdate(BaseModel):
-    title: str | None = None
+    title: str | None = Field(None, min_length=1, max_length=200)
     description: str | None = None
     start_date: date | None = None
     end_date: date | None = None
@@ -47,6 +58,7 @@ class TravelPlanUpdate(BaseModel):
 
 class TravelPlanResponse(BaseModel):
     id: int
+    user_id: int
     title: str
     description: str | None = None
     start_date: date
@@ -54,6 +66,19 @@ class TravelPlanResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     spots: list[TravelPlanSpotResponse] = []
+
+    class Config:
+        from_attributes = True
+
+
+class TravelPlanListItem(BaseModel):
+    id: int
+    title: str
+    description: str | None = None
+    start_date: date
+    end_date: date
+    created_at: datetime
+    updated_at: datetime
 
     class Config:
         from_attributes = True

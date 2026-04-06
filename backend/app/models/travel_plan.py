@@ -13,6 +13,9 @@ class TravelPlan(Base):
     __tablename__ = "travel_plans"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
     title: Mapped[str] = mapped_column(String(200))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     start_date: Mapped[date] = mapped_column(Date)
@@ -22,6 +25,7 @@ class TravelPlan(Base):
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
+    user: Mapped["User"] = relationship(back_populates="travel_plans")
     spots: Mapped[list["TravelPlanSpot"]] = relationship(
         back_populates="travel_plan", cascade="all, delete-orphan"
     )
@@ -36,7 +40,7 @@ class TravelPlanSpot(Base):
     travel_plan_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("travel_plans.id", ondelete="CASCADE"), index=True
     )
-    plan_date: Mapped[date] = mapped_column(Date)
+    plan_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     order: Mapped[int] = mapped_column(Integer, default=0)
     name: Mapped[str] = mapped_column(String(200))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -47,5 +51,6 @@ class TravelPlanSpot(Base):
     location = mapped_column(Geometry("POINT", srid=4326), nullable=True)
     source: Mapped[str | None] = mapped_column(String(50), nullable=True)
     source_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     travel_plan: Mapped["TravelPlan"] = relationship(back_populates="spots")

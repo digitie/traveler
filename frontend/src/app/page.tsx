@@ -1,25 +1,20 @@
 "use client";
 
-import dynamic from "next/dynamic";
-
-const KakaoMap = dynamic(() => import("@/components/KakaoMap"), {
-  ssr: false,
-  loading: () => (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        height: "100vh",
-        fontSize: "1.1rem",
-        color: "#666",
-      }}
-    >
-      지도를 불러오는 중...
-    </div>
-  ),
-});
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 
 export default function Home() {
-  return <KakaoMap />;
+  const router = useRouter();
+  const { user, loading } = useAuth();
+
+  useEffect(() => {
+    if (loading) return;
+    if (user) router.replace("/plans");
+    else router.replace("/login");
+  }, [user, loading, router]);
+
+  return (
+    <div className="page-loading">로딩 중...</div>
+  );
 }
