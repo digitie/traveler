@@ -7,13 +7,16 @@ import {
   Accommodation,
   TravelPlanDetail,
   TravelPlanSpot,
+  WeatherPoint,
   addSpot,
   deleteSpot,
   fetchAccommodationsInBounds,
   fetchPlan,
+  fetchWeatherPoints,
 } from "@/lib/api";
 import AppHeader from "./AppHeader";
 import AccommodationDetailModal from "./AccommodationDetailModal";
+import WeatherDetailModal from "./WeatherDetailModal";
 
 interface Props {
   planId: number;
@@ -44,6 +47,26 @@ export default function PlanMap({ planId }: Props) {
   const [showAccommodations, setShowAccommodations] = useState(true);
   const [selectedAcc, setSelectedAcc] = useState<Accommodation | null>(null);
   const [detailAccId, setDetailAccId] = useState<number | null>(null);
+
+  // weather marker state
+  const [weatherPoints, setWeatherPoints] = useState<WeatherPoint[]>([]);
+  const [weatherDetail, setWeatherDetail] = useState<{
+    nx: number;
+    ny: number;
+  } | null>(null);
+
+  useEffect(() => {
+    fetchWeatherPoints()
+      .then(setWeatherPoints)
+      .catch((e) => console.warn("weather points load failed", e));
+    // 30분마다 갱신
+    const id = setInterval(() => {
+      fetchWeatherPoints()
+        .then(setWeatherPoints)
+        .catch(() => {});
+    }, 30 * 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const load = async () => {
     setLoading(true);
@@ -293,6 +316,61 @@ export default function PlanMap({ planId }: Props) {
                 ) : null
               )}
 
+            {/* 날씨 마커 (항상 표시) */}
+            {weatherPoints.map((wp) => {
+              const cur = wp.current;
+              const next = wp.next_hours[0];
+              const pty = cur?.pty || next?.pty || "0";
+              const sky = cur?.sky || next?.sky || "1";
+              const emoji =
+                pty && pty !== "0"
+                  ? pty === "3"
+                    ? "🌨"
+                    : "🌧"
+                  : sky === "1"
+                    ? "☀️"
+                    : sky === "3"
+                      ? "⛅"
+                      : sky === "4"
+                        ? "☁️"
+                        : "🌤";
+              return (
+                <CustomOverlayMap
+                  key={`wx-${wp.nx}-${wp.ny}`}
+                  position={{ lat: wp.lat, lng: wp.lng }}
+                  yAnchor={1}
+                  zIndex={10}
+                >
+                  <div
+                    className="weather-marker"
+                    onClick={() =>
+                      setWeatherDetail({ nx: wp.nx, ny: wp.ny })
+                    }
+                  >
+                    <div className="wx-emoji">{emoji}</div>
+                    <div className="wx-text">
+                      <div className="wx-name">{wp.name}</div>
+                      <div className="wx-temp">
+                        {cur?.temperature != null
+                          ? `${cur.temperature.toFixed(0)}°`
+                          : next?.temperature != null
+                            ? `${next.temperature.toFixed(0)}°`
+                            : "—"}
+                      </div>
+                      {wp.next_hours.length > 0 && (
+                        <div className="wx-next">
+                          1h{" "}
+                          {wp.next_hours[0]?.temperature != null
+                            ? `${wp.next_hours[0].temperature.toFixed(0)}°`
+                            : "—"}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </CustomOverlayMap>
+              );
+            })}
+
             {selectedSpot && (
               <CustomOverlayMap
                 position={{
@@ -450,6 +528,14 @@ export default function PlanMap({ planId }: Props) {
         <AccommodationDetailModal
           accommodationId={detailAccId}
           onClose={() => setDetailAccId(null)}
+        />
+      )}
+
+      {weatherDetail && (
+        <WeatherDetailModal
+          nx={weatherDetail.nx}
+          ny={weatherDetail.ny}
+          onClose={() => setWeatherDetail(null)}
         />
       )}
     </div>

@@ -280,6 +280,159 @@ input:disabled {
   cursor: pointer;
 }
 
+/* ============ Weather marker ============ */
+.weather-marker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: white;
+  border: 1px solid #d8e0ec;
+  border-radius: 999px;
+  padding: 5px 10px 5px 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.12s;
+  font-size: 0.78rem;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.weather-marker:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.24);
+  border-color: #1a73e8;
+}
+
+.wx-emoji {
+  font-size: 1.2rem;
+}
+
+.wx-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.wx-name {
+  color: #555;
+  font-size: 0.7rem;
+}
+
+.wx-temp {
+  font-weight: 700;
+  color: #1a73e8;
+  font-size: 0.92rem;
+}
+
+.wx-next {
+  color: #888;
+  font-size: 0.66rem;
+}
+
+/* ============ Weather modal ============ */
+.weather-modal {
+  max-width: 640px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.weather-current {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  background: linear-gradient(135deg, #1a73e8 0%, #4285f4 100%);
+  color: white;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 14px;
+}
+
+.weather-current-temp {
+  font-size: 2.6rem;
+  font-weight: 700;
+}
+
+.weather-current-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.85rem;
+  opacity: 0.95;
+}
+
+.weather-section {
+  margin-top: 16px;
+}
+
+.weather-section h4 {
+  font-size: 0.88rem;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.weather-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.weather-strip-cell {
+  flex: 0 0 auto;
+  min-width: 64px;
+  text-align: center;
+  background: #f5f6f8;
+  border-radius: 8px;
+  padding: 10px 6px;
+}
+
+.cell-time {
+  font-size: 0.72rem;
+  color: #666;
+}
+
+.cell-emoji {
+  font-size: 1.4rem;
+  margin: 4px 0;
+}
+
+.cell-temp {
+  font-weight: 700;
+  color: #1a73e8;
+  font-size: 0.95rem;
+}
+
+.weather-table-wrap {
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid #eee;
+  border-radius: 6px;
+}
+
+.weather-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.weather-table th,
+.weather-table td {
+  padding: 7px 10px;
+  text-align: center;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.weather-table th {
+  background: #f5f6f8;
+  color: #555;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+}
+
+.weather-table tbody tr:hover {
+  background: #fafbfc;
+}
+
 .header-controls button {
   padding: 6px 12px;
   border: 1px solid rgba(255, 255, 255, 0.5);

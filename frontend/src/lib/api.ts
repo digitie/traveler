@@ -339,6 +339,63 @@ export async function updateAccommodationMyMemo(
   });
 }
 
+// ============ Weather points API ============
+
+export interface WeatherCurrent {
+  temperature?: number | null;
+  humidity?: number | null;
+  wind_speed?: number | null;
+  rain_1h?: number | null;
+  pty?: string | null;
+  pty_label?: string | null;
+  sky?: string | null;
+  sky_label?: string | null;
+}
+
+export interface WeatherHourly {
+  fcst_date: string;
+  fcst_time: string;
+  temperature?: number | null;
+  sky?: string | null;
+  sky_label?: string | null;
+  pty?: string | null;
+  pty_label?: string | null;
+  humidity?: number | null;
+  wind_speed?: number | null;
+  rain_1h?: string | null;
+  rain_prob?: number | null;
+  rain_amount?: string | null;
+  temp_min?: number | null;
+  temp_max?: number | null;
+}
+
+export interface WeatherPoint {
+  name: string;
+  lat: number;
+  lng: number;
+  nx: number;
+  ny: number;
+  current: WeatherCurrent | null;
+  next_hours: WeatherHourly[];
+  fetched_at: string;
+}
+
+export interface WeatherPointDetail extends WeatherPoint {
+  ultra_short_forecast: WeatherHourly[];
+  short_forecast: WeatherHourly[];
+}
+
+export async function fetchWeatherPoints(): Promise<WeatherPoint[]> {
+  return request<WeatherPoint[]>("/api/weather/points");
+}
+
+export async function fetchWeatherPointDetail(
+  nx: number,
+  ny: number
+): Promise<WeatherPointDetail> {
+  return request<WeatherPointDetail>(`/api/weather/points/${nx}/${ny}/detail`);
+}
+
 // ============ Weather API ============
 
 export async function fetchWeatherForecast(
