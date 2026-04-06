@@ -67,6 +67,37 @@ export interface TravelPlanSpot {
   latitude: number;
   longitude: number;
   source: string | null;
+  source_id: string | null;
+}
+
+export interface Accommodation {
+  id: number;
+  accommodation_name: string;
+  category: string | null;
+  sido: string | null;
+  sigungu: string | null;
+  road_address: string | null;
+  jibun_address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  phone: string | null;
+  room_count: string | null;
+  homepage: string | null;
+  operating_hours: string | null;
+  parking: string | null;
+}
+
+export interface AccommodationPlanRef {
+  plan_id: number;
+  plan_title: string;
+  spot_id: number;
+}
+
+export interface AccommodationDetail extends Accommodation {
+  public_memo: string;
+  public_memo_updated_at: string | null;
+  my_memo: string;
+  my_plans: AccommodationPlanRef[];
 }
 
 export interface TravelPlanDetail extends TravelPlan {
@@ -261,6 +292,51 @@ export async function updateUser(
 
 export async function deleteUser(id: number): Promise<void> {
   return request<void>(`/api/admin/users/${id}`, { method: "DELETE" });
+}
+
+// ============ Tourism (accommodations) API ============
+
+export async function fetchAccommodationsInBounds(bounds: {
+  sw_lat: number;
+  sw_lng: number;
+  ne_lat: number;
+  ne_lng: number;
+  limit?: number;
+}): Promise<Accommodation[]> {
+  const params = new URLSearchParams({
+    sw_lat: String(bounds.sw_lat),
+    sw_lng: String(bounds.sw_lng),
+    ne_lat: String(bounds.ne_lat),
+    ne_lng: String(bounds.ne_lng),
+    limit: String(bounds.limit ?? 500),
+  });
+  return request<Accommodation[]>(`/api/tourism/accommodations?${params}`);
+}
+
+export async function fetchAccommodationDetail(
+  id: number
+): Promise<AccommodationDetail> {
+  return request<AccommodationDetail>(`/api/tourism/accommodations/${id}`);
+}
+
+export async function updateAccommodationPublicMemo(
+  id: number,
+  content: string
+): Promise<void> {
+  return request<void>(`/api/tourism/accommodations/${id}/memo`, {
+    method: "PUT",
+    body: JSON.stringify({ content }),
+  });
+}
+
+export async function updateAccommodationMyMemo(
+  id: number,
+  content: string
+): Promise<void> {
+  return request<void>(`/api/tourism/accommodations/${id}/my-memo`, {
+    method: "PUT",
+    body: JSON.stringify({ content }),
+  });
 }
 
 // ============ Weather API ============

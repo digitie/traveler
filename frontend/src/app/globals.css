@@ -156,6 +156,130 @@ input:disabled {
   margin: 18px 0;
 }
 
+/* ============ Accommodation modal ============ */
+.accommodation-modal {
+  max-width: 560px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.acc-meta {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 3px 9px;
+  background: #e8f0fe;
+  color: #1a73e8;
+  font-size: 0.74rem;
+  border-radius: 999px;
+}
+
+.acc-info {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 6px 12px;
+  margin-bottom: 14px;
+  font-size: 0.85rem;
+}
+
+.acc-info dt {
+  color: #666;
+  font-weight: 500;
+}
+
+.acc-info dd {
+  color: #222;
+  word-break: break-all;
+}
+
+.acc-info a {
+  color: #1a73e8;
+  text-decoration: underline;
+}
+
+.acc-section {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #eee;
+}
+
+.acc-section h4 {
+  font-size: 0.9rem;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.acc-section textarea {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  outline: none;
+  font-family: inherit;
+  font-size: 0.85rem;
+  resize: vertical;
+}
+
+.acc-section textarea:focus {
+  border-color: #1a73e8;
+}
+
+.acc-plan-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.acc-plan-list a {
+  color: #1a73e8;
+  font-size: 0.88rem;
+  padding: 6px 10px;
+  background: #f5f8ff;
+  border-radius: 5px;
+  display: inline-block;
+}
+
+.acc-plan-list a:hover {
+  background: #e8f0fe;
+}
+
+.memo-meta {
+  font-size: 0.72rem;
+  color: #888;
+  margin-top: 4px;
+}
+
+.memo-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.success-inline {
+  font-size: 0.78rem;
+  color: #137333;
+}
+
+.toggle-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.82rem;
+  color: #555;
+  cursor: pointer;
+}
+
+.toggle-inline input {
+  cursor: pointer;
+}
+
 .header-controls button {
   padding: 6px 12px;
   border: 1px solid rgba(255, 255, 255, 0.5);

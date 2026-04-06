@@ -39,26 +39,31 @@ def fetch_standard_data_page(
         "serviceKey": DATA_GO_KR_API_KEY,
         "returnType": "JSON",
     }
-    resp = requests.get(api_url, params=params, timeout=30)
+    resp = requests.get(api_url, params=params, timeout=60)
     resp.raise_for_status()
     return resp.json()
 
 
-def fetch_all_pages(api_url: str, max_requests: int = PER_DAG_DAILY_LIMIT) -> list[dict]:
+def fetch_all_pages(
+    api_url: str,
+    max_requests: int = PER_DAG_DAILY_LIMIT,
+    per_page: int = MAX_PER_PAGE,
+) -> list[dict]:
     """
     표준데이터를 페이지네이션하며 전부 가져오기.
-    max_requests 제한을 두어 일일 트래픽 한도 초과 방지.
+    max_requests 제한을 두어 트래픽 한도 초과 방지.
+    per_page 로 페이지당 행 수를 조정 가능 (최대 1000).
     """
     all_data = []
     page = 1
 
     # 첫 페이지로 전체 건수 파악
-    result = fetch_standard_data_page(api_url, page=1)
+    result = fetch_standard_data_page(api_url, page=1, per_page=per_page)
     total_count = result.get("totalCount", result.get("matchCount", 0))
     items = result.get("data", [])
     all_data.extend(items)
 
-    total_pages = math.ceil(total_count / MAX_PER_PAGE)
+    total_pages = math.ceil(total_count / per_page) if per_page else 1
     logger.info(f"Total records: {total_count}, Total pages: {total_pages}")
 
     # 남은 페이지 (최대 요청 수 제한)
@@ -67,7 +72,7 @@ def fetch_all_pages(api_url: str, max_requests: int = PER_DAG_DAILY_LIMIT) -> li
         page += 1
         time.sleep(0.5)  # rate limiting
         try:
-            result = fetch_standard_data_page(api_url, page=page)
+            result = fetch_standard_data_page(api_url, page=page, per_page=per_page)
             items = result.get("data", [])
             if not items:
                 break

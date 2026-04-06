@@ -1,16 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Map, MapMarker, CustomOverlayMap } from "react-kakao-maps-sdk";
 import {
+  Accommodation,
   TravelPlanDetail,
   TravelPlanSpot,
-  fetchPlan,
   addSpot,
   deleteSpot,
+  fetchAccommodationsInBounds,
+  fetchPlan,
 } from "@/lib/api";
 import AppHeader from "./AppHeader";
+import AccommodationDetailModal from "./AccommodationDetailModal";
 
 interface Props {
   planId: number;
@@ -36,6 +39,12 @@ export default function PlanMap({ planId }: Props) {
   });
   const [submitting, setSubmitting] = useState(false);
 
+  // accommodation overlay state
+  const [accommodations, setAccommodations] = useState<Accommodation[]>([]);
+  const [showAccommodations, setShowAccommodations] = useState(true);
+  const [selectedAcc, setSelectedAcc] = useState<Accommodation | null>(null);
+  const [detailAccId, setDetailAccId] = useState<number | null>(null);
+
   const load = async () => {
     setLoading(true);
     try {
@@ -56,6 +65,38 @@ export default function PlanMap({ planId }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planId]);
 
+  // 어떤 숙소가 현재 plan 의 spot 으로 추가되어 있는지 빠른 조회용 map
+  const accSpotByAccId = useMemo(() => {
+    const m = new Map<string, TravelPlanSpot>();
+    if (!plan) return m;
+    for (const s of plan.spots) {
+      if (s.source === "accommodation" && s.source_id) {
+        m.set(s.source_id, s);
+      }
+    }
+    return m;
+  }, [plan]);
+
+  const loadAccommodationsForBounds = async (map: kakao.maps.Map) => {
+    if (!showAccommodations) return;
+    const bounds = map.getBounds();
+    const sw = bounds.getSouthWest();
+    const ne = bounds.getNorthEast();
+    try {
+      const data = await fetchAccommodationsInBounds({
+        sw_lat: sw.getLat(),
+        sw_lng: sw.getLng(),
+        ne_lat: ne.getLat(),
+        ne_lng: ne.getLng(),
+        limit: 500,
+      });
+      setAccommodations(data);
+    } catch (e: any) {
+      // 조용히 무시 (지도 이동 중 오류 가능)
+      console.warn("accommodation load failed", e);
+    }
+  };
+
   const handleRightClick = (
     _map: kakao.maps.Map,
     mouseEvent: kakao.maps.event.MouseEvent
@@ -63,6 +104,7 @@ export default function PlanMap({ planId }: Props) {
     const latlng = mouseEvent.latLng;
     setPendingPoi({ lat: latlng.getLat(), lng: latlng.getLng() });
     setSelectedSpot(null);
+    setSelectedAcc(null);
   };
 
   const handleAddPoi = async (e: React.FormEvent) => {
@@ -110,6 +152,39 @@ export default function PlanMap({ planId }: Props) {
     }
   };
 
+  const handleAddAccommodationToPlan = async (acc: Accommodation) => {
+    if (!plan || acc.latitude == null || acc.longitude == null) return;
+    try {
+      await addSpot(plan.id, {
+        name: acc.accommodation_name,
+        latitude: acc.latitude,
+        longitude: acc.longitude,
+        category: acc.category || "숙박",
+        address: acc.road_address || acc.jibun_address || undefined,
+        source: "accommodation",
+        source_id: String(acc.id),
+        plan_date: poiForm.plan_date || plan.start_date,
+      });
+      await load();
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
+
+  const handleRemoveAccommodationFromPlan = async (acc: Accommodation) => {
+    if (!plan) return;
+    const existing = accSpotByAccId.get(String(acc.id));
+    if (!existing) return;
+    if (!confirm(`${acc.accommodation_name} 을(를) 일정에서 삭제할까요?`)) return;
+    try {
+      await deleteSpot(plan.id, existing.id);
+      setSelectedAcc(null);
+      await load();
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
+
   if (loading) return <div className="page-loading">불러오는 중...</div>;
   if (!plan) return <div className="page-loading">계획을 찾을 수 없습니다</div>;
 
@@ -138,6 +213,14 @@ export default function PlanMap({ planId }: Props) {
             {plan.start_date} ~ {plan.end_date}
           </span>
         </div>
+        <label className="toggle-inline">
+          <input
+            type="checkbox"
+            checked={showAccommodations}
+            onChange={(e) => setShowAccommodations(e.target.checked)}
+          />
+          숙소 표시
+        </label>
         <div className="plan-detail-hint">
           지도 우클릭 → 장소 추가 ({plan.spots.length}개 장소)
         </div>
@@ -176,14 +259,39 @@ export default function PlanMap({ planId }: Props) {
             level={9}
             style={{ width: "100%", height: "100%" }}
             onRightClick={handleRightClick}
+            onCreate={loadAccommodationsForBounds}
+            onIdle={loadAccommodationsForBounds}
           >
+            {/* 사용자 spot 마커 */}
             {plan.spots.map((s) => (
               <MapMarker
-                key={s.id}
+                key={`spot-${s.id}`}
                 position={{ lat: s.latitude, lng: s.longitude }}
-                onClick={() => setSelectedSpot(s)}
+                onClick={() => {
+                  setSelectedSpot(s);
+                  setSelectedAcc(null);
+                }}
               />
             ))}
+
+            {/* 숙박 데이터셋 마커 */}
+            {showAccommodations &&
+              accommodations.map((a) =>
+                a.latitude != null && a.longitude != null ? (
+                  <MapMarker
+                    key={`acc-${a.id}`}
+                    position={{ lat: a.latitude, lng: a.longitude }}
+                    image={{
+                      src: "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png",
+                      size: { width: 24, height: 35 },
+                    }}
+                    onClick={() => {
+                      setSelectedAcc(a);
+                      setSelectedSpot(null);
+                    }}
+                  />
+                ) : null
+              )}
 
             {selectedSpot && (
               <CustomOverlayMap
@@ -213,6 +321,60 @@ export default function PlanMap({ planId }: Props) {
                 </div>
               </CustomOverlayMap>
             )}
+
+            {selectedAcc &&
+              selectedAcc.latitude != null &&
+              selectedAcc.longitude != null && (
+                <CustomOverlayMap
+                  position={{
+                    lat: selectedAcc.latitude,
+                    lng: selectedAcc.longitude,
+                  }}
+                  yAnchor={1.3}
+                >
+                  <div className="info-overlay">
+                    <div className="info-title">
+                      🏨 {selectedAcc.accommodation_name}
+                    </div>
+                    {selectedAcc.category && (
+                      <div className="info-meta">🏷 {selectedAcc.category}</div>
+                    )}
+                    {(selectedAcc.road_address ||
+                      selectedAcc.jibun_address) && (
+                      <div className="info-meta">
+                        📍{" "}
+                        {selectedAcc.road_address || selectedAcc.jibun_address}
+                      </div>
+                    )}
+                    {selectedAcc.phone && (
+                      <div className="info-meta">📞 {selectedAcc.phone}</div>
+                    )}
+                    <div className="info-actions">
+                      {accSpotByAccId.has(String(selectedAcc.id)) ? (
+                        <button
+                          onClick={() =>
+                            handleRemoveAccommodationFromPlan(selectedAcc)
+                          }
+                        >
+                          일정에서 삭제
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() =>
+                            handleAddAccommodationToPlan(selectedAcc)
+                          }
+                        >
+                          여행목록에 추가
+                        </button>
+                      )}
+                      <button onClick={() => setDetailAccId(selectedAcc.id)}>
+                        상세보기
+                      </button>
+                      <button onClick={() => setSelectedAcc(null)}>닫기</button>
+                    </div>
+                  </div>
+                </CustomOverlayMap>
+              )}
 
             {pendingPoi && (
               <CustomOverlayMap
@@ -283,6 +445,13 @@ export default function PlanMap({ planId }: Props) {
           </Map>
         </div>
       </div>
+
+      {detailAccId !== null && (
+        <AccommodationDetailModal
+          accommodationId={detailAccId}
+          onClose={() => setDetailAccId(null)}
+        />
+      )}
     </div>
   );
 }

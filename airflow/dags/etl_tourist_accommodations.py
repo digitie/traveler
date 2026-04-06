@@ -1,6 +1,10 @@
 """
 전국숙박정보 표준데이터 ETL DAG
 https://www.data.go.kr/data/15021141/standard.do
+
+- 월 트래픽 1000회 제한 (data.go.kr)
+- 페이지당 최대 1000건 → 통상 1~3 호출로 전체 수집 가능
+- 데이터셋이 월 1회 업데이트되므로 매월 1일 실행
 """
 
 from datetime import datetime, timedelta
@@ -12,6 +16,11 @@ from sqlalchemy import text
 from common import get_engine, fetch_all_pages, logger
 
 API_URL = "https://api.odcloud.kr/api/15021141/v1/uddi:a0a0bea7-83a4-4b6e-8557-e4e7c8897fa3"
+
+# 페이지당 최대치 (data.go.kr 허용 상한)
+PER_PAGE = 1000
+# 월 1000회 한도 — 한 달에 한 번만 실행하므로 여유있게 50회까지 허용
+MONTHLY_REQUEST_BUDGET = 50
 
 CREATE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS tourist_accommodations (
@@ -71,7 +80,9 @@ def _extract_sigungu(address: str | None) -> str | None:
 
 
 def extract(**kwargs):
-    data = fetch_all_pages(API_URL)
+    data = fetch_all_pages(
+        API_URL, max_requests=MONTHLY_REQUEST_BUDGET, per_page=PER_PAGE
+    )
     kwargs["ti"].xcom_push(key="raw_data", value=data)
     logger.info(f"Extracted {len(data)} tourist accommodations")
 
@@ -174,11 +185,11 @@ default_args = {
 with DAG(
     dag_id="etl_tourist_accommodations",
     default_args=default_args,
-    description="전국숙박정보 표준데이터 ETL",
-    schedule="0 5 * * *",  # 매일 새벽 5시
+    description="전국숙박정보 표준데이터 ETL (월 1회)",
+    schedule="0 4 1 * *",  # 매월 1일 새벽 4시
     start_date=datetime(2025, 1, 1),
     catchup=False,
-    tags=["tourism", "etl", "data.go.kr"],
+    tags=["tourism", "etl", "data.go.kr", "monthly"],
 ) as dag:
     t_extract = PythonOperator(task_id="extract", python_callable=extract)
     t_transform = PythonOperator(task_id="transform", python_callable=transform)
