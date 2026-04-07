@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Map, MapMarker, CustomOverlayMap } from "react-kakao-maps-sdk";
 import {
   Accommodation,
+  ReverseGeocodeResult,
   TravelPlanDetail,
   TravelPlanSpot,
   WeatherPoint,
@@ -13,6 +14,7 @@ import {
   fetchAccommodationsInBounds,
   fetchPlan,
   fetchWeatherPoints,
+  reverseGeocode,
   updateSpot,
 } from "@/lib/api";
 import AppHeader from "./AppHeader";
@@ -45,6 +47,9 @@ export default function PlanMap({ planId }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [mobileLayerOpen, setMobileLayerOpen] = useState(false);
+  const [addressMarker, setAddressMarker] = useState<
+    (ReverseGeocodeResult & { loading?: boolean }) | null
+  >(null);
 
   // accommodation overlay state
   const [accommodations, setAccommodations] = useState<Accommodation[]>([]);
@@ -135,6 +140,36 @@ export default function PlanMap({ planId }: Props) {
     setPendingPoi({ lat: latlng.getLat(), lng: latlng.getLng() });
     setSelectedSpot(null);
     setSelectedAcc(null);
+  };
+
+  const handleMapClick = async (
+    _map: kakao.maps.Map,
+    mouseEvent: kakao.maps.event.MouseEvent
+  ) => {
+    // 카카오맵의 latLng 는 WGS84 (EPSG:4326). 백엔드 reverse-geocode 도 동일.
+    const lat = mouseEvent.latLng.getLat();
+    const lng = mouseEvent.latLng.getLng();
+    setAddressMarker({
+      lat,
+      lng,
+      road_address: null,
+      jibun_address: null,
+      zipcode: null,
+      loading: true,
+    });
+    try {
+      const result = await reverseGeocode(lat, lng);
+      setAddressMarker({ ...result, loading: false });
+    } catch (e) {
+      setAddressMarker({
+        lat,
+        lng,
+        road_address: null,
+        jibun_address: null,
+        zipcode: null,
+        loading: false,
+      });
+    }
   };
 
   const handleAddPoi = async (e: React.FormEvent) => {
@@ -337,6 +372,7 @@ export default function PlanMap({ planId }: Props) {
             center={center}
             level={9}
             style={{ width: "100%", height: "100%" }}
+            onClick={handleMapClick}
             onRightClick={handleRightClick}
             onCreate={loadAccommodationsForBounds}
             onIdle={loadAccommodationsForBounds}
@@ -509,6 +545,54 @@ export default function PlanMap({ planId }: Props) {
                   </div>
                 </CustomOverlayMap>
               )}
+
+            {addressMarker && (
+              <CustomOverlayMap
+                position={{ lat: addressMarker.lat, lng: addressMarker.lng }}
+                yAnchor={1.25}
+                zIndex={20}
+              >
+                <div className="address-marker">
+                  <button
+                    className="address-close"
+                    onClick={() => setAddressMarker(null)}
+                    aria-label="닫기"
+                  >
+                    ✕
+                  </button>
+                  {addressMarker.loading ? (
+                    <div className="address-loading">주소 조회 중…</div>
+                  ) : addressMarker.road_address ||
+                    addressMarker.jibun_address ? (
+                    <>
+                      {addressMarker.road_address && (
+                        <div className="address-line road">
+                          <span className="address-tag">도로명</span>
+                          {addressMarker.road_address}
+                        </div>
+                      )}
+                      {addressMarker.jibun_address && (
+                        <div className="address-line jibun">
+                          <span className="address-tag">지번</span>
+                          {addressMarker.jibun_address}
+                        </div>
+                      )}
+                      {addressMarker.zipcode && (
+                        <div className="address-zip">
+                          우편번호 {addressMarker.zipcode}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="address-loading">주소를 찾을 수 없음</div>
+                  )}
+                  <div className="address-coord">
+                    {addressMarker.lat.toFixed(5)},{" "}
+                    {addressMarker.lng.toFixed(5)}
+                  </div>
+                </div>
+              </CustomOverlayMap>
+            )}
 
             {pendingPoi && (
               <CustomOverlayMap

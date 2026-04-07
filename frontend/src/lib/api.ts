@@ -338,6 +338,22 @@ export async function setLayerWeatherSpot(
   );
 }
 
+export interface ReverseGeocodeResult {
+  lat: number;
+  lng: number;
+  road_address: string | null;
+  jibun_address: string | null;
+  zipcode: string | null;
+}
+
+export async function reverseGeocode(
+  lat: number,
+  lng: number
+): Promise<ReverseGeocodeResult> {
+  const params = new URLSearchParams({ lat: String(lat), lng: String(lng) });
+  return request<ReverseGeocodeResult>(`/api/geocode/reverse?${params}`);
+}
+
 export async function fetchWeatherByCoord(
   lat: number,
   lng: number,

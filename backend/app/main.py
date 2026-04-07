@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from app.database import engine, Base
-from app.routers import auth, admin, weather, travel_plans, tourism
+from app.routers import auth, admin, weather, travel_plans, tourism, geocode
 
 
 @asynccontextmanager
@@ -49,6 +49,7 @@ app.include_router(admin.router)
 app.include_router(weather.router)
 app.include_router(travel_plans.router)
 app.include_router(tourism.router)
+app.include_router(geocode.router)
 
 
 @app.get("/api/health")
