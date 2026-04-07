@@ -100,9 +100,39 @@ export interface AccommodationDetail extends Accommodation {
   my_plans: AccommodationPlanRef[];
 }
 
+export interface LayerWeatherEntry {
+  plan_date: string;
+  weather_spot_id: number | null;
+}
+
 export interface TravelPlanDetail extends TravelPlan {
   user_id: number;
   spots: TravelPlanSpot[];
+  layer_weather: LayerWeatherEntry[];
+}
+
+export interface WeatherBucket {
+  time: string;
+  label: string;
+  temperature: number | null;
+  sky: string | null;
+  sky_label: string | null;
+  pty: string | null;
+  pty_label: string | null;
+  rain_prob: number | null;
+  humidity: number | null;
+  wind_speed: number | null;
+}
+
+export interface WeatherByCoord {
+  lat: number;
+  lng: number;
+  nx: number;
+  ny: number;
+  date: string;
+  temp_min: number | null;
+  temp_max: number | null;
+  buckets: WeatherBucket[];
 }
 
 // ============ Auth helpers ============
@@ -265,6 +295,26 @@ export async function addSpot(
   });
 }
 
+export async function updateSpot(
+  planId: number,
+  spotId: number,
+  data: Partial<{
+    name: string;
+    plan_date: string | null;
+    order: number;
+    description: string;
+    category: string;
+    address: string;
+    latitude: number;
+    longitude: number;
+  }>
+): Promise<TravelPlanSpot> {
+  return request<TravelPlanSpot>(`/api/plans/${planId}/spots/${spotId}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
 export async function deleteSpot(
   planId: number,
   spotId: number
@@ -272,6 +322,33 @@ export async function deleteSpot(
   return request<void>(`/api/plans/${planId}/spots/${spotId}`, {
     method: "DELETE",
   });
+}
+
+export async function setLayerWeatherSpot(
+  planId: number,
+  planDate: string,
+  weatherSpotId: number | null
+): Promise<void> {
+  return request<void>(
+    `/api/plans/${planId}/layers/${planDate}/weather-spot`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ weather_spot_id: weatherSpotId }),
+    }
+  );
+}
+
+export async function fetchWeatherByCoord(
+  lat: number,
+  lng: number,
+  date: string
+): Promise<WeatherByCoord> {
+  const params = new URLSearchParams({
+    lat: String(lat),
+    lng: String(lng),
+    date,
+  });
+  return request<WeatherByCoord>(`/api/weather/by-coord?${params}`);
 }
 
 // ============ Admin API ============

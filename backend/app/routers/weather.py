@@ -15,6 +15,7 @@ from app.services.weather_service import (
     fetch_ultra_srt_fcst,
     fetch_ultra_srt_ncst,
     fetch_weather_forecast,
+    latlng_to_grid,
     parse_ncst,
     parse_ultra_fcst,
     parse_vilage_fcst,
@@ -167,6 +168,69 @@ async def get_weather_point_detail(nx: int, ny: int):
         "ultra_short_forecast": ultra,
         "short_forecast": vilage,
         "fetched_at": datetime.utcnow().isoformat(),
+    }
+
+
+@router.get("/by-coord")
+async def get_weather_by_coord(
+    lat: float = Query(...),
+    lng: float = Query(...),
+    date: str = Query(..., description="YYYY-MM-DD"),
+):
+    """좌표 + 날짜로 6시간 단위(00/06/12/18) 단기예보 반환."""
+    nx, ny = latlng_to_grid(lat, lng)
+    try:
+        items = await fetch_weather_forecast(nx, ny)
+    except Exception as e:
+        log.warning("by-coord vilage fetch failed: %s", e)
+        items = []
+    parsed = parse_vilage_fcst(items)
+    target = date.replace("-", "")
+    target_buckets = ["0000", "0600", "1200", "1800"]
+    out: list[dict] = []
+    by_time = {h["fcst_time"]: h for h in parsed if h["fcst_date"] == target}
+    for t in target_buckets:
+        h = by_time.get(t) or {}
+        out.append(
+            {
+                "time": t,
+                "label": f"{int(t[:2]):02d}시",
+                "temperature": h.get("temperature"),
+                "sky": h.get("sky"),
+                "sky_label": h.get("sky_label"),
+                "pty": h.get("pty"),
+                "pty_label": h.get("pty_label"),
+                "rain_prob": h.get("rain_prob"),
+                "humidity": h.get("humidity"),
+                "wind_speed": h.get("wind_speed"),
+            }
+        )
+    # 일 최저/최고
+    temp_min = next(
+        (
+            h.get("temp_min")
+            for h in parsed
+            if h["fcst_date"] == target and h.get("temp_min") is not None
+        ),
+        None,
+    )
+    temp_max = next(
+        (
+            h.get("temp_max")
+            for h in parsed
+            if h["fcst_date"] == target and h.get("temp_max") is not None
+        ),
+        None,
+    )
+    return {
+        "lat": lat,
+        "lng": lng,
+        "nx": nx,
+        "ny": ny,
+        "date": date,
+        "temp_min": temp_min,
+        "temp_max": temp_max,
+        "buckets": out,
     }
 
 

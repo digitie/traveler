@@ -29,6 +29,9 @@ class TravelPlan(Base):
     spots: Mapped[list["TravelPlanSpot"]] = relationship(
         back_populates="travel_plan", cascade="all, delete-orphan"
     )
+    layer_weather: Mapped[list["TravelPlanLayerWeather"]] = relationship(
+        cascade="all, delete-orphan"
+    )
 
 
 class TravelPlanSpot(Base):
@@ -54,3 +57,19 @@ class TravelPlanSpot(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     travel_plan: Mapped["TravelPlan"] = relationship(back_populates="spots")
+
+
+class TravelPlanLayerWeather(Base):
+    """레이어(plan_date)별 날씨 표시 기준 spot"""
+
+    __tablename__ = "travel_plan_layer_weather"
+
+    plan_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("travel_plans.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    plan_date: Mapped[date] = mapped_column(Date, primary_key=True)
+    weather_spot_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("travel_plan_spots.id", ondelete="SET NULL"), nullable=True
+    )

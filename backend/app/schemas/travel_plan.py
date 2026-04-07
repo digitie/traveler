@@ -57,6 +57,14 @@ class TravelPlanUpdate(BaseModel):
     end_date: date | None = None
 
 
+class LayerWeatherEntry(BaseModel):
+    plan_date: date
+    weather_spot_id: int | None = None
+
+    class Config:
+        from_attributes = True
+
+
 class TravelPlanResponse(BaseModel):
     id: int
     user_id: int
@@ -67,9 +75,14 @@ class TravelPlanResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     spots: list[TravelPlanSpotResponse] = []
+    layer_weather: list[LayerWeatherEntry] = []
 
     class Config:
         from_attributes = True
+
+
+class LayerWeatherSet(BaseModel):
+    weather_spot_id: int | None = None
 
 
 class TravelPlanListItem(BaseModel):

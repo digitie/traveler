@@ -5,9 +5,14 @@ from sqlalchemy.orm import selectinload
 
 from app.auth import get_current_user
 from app.database import get_db
-from app.models.travel_plan import TravelPlan, TravelPlanSpot
+from app.models.travel_plan import (
+    TravelPlan,
+    TravelPlanLayerWeather,
+    TravelPlanSpot,
+)
 from app.models.user import User
 from app.schemas.travel_plan import (
+    LayerWeatherSet,
     TravelPlanCreate,
     TravelPlanListItem,
     TravelPlanResponse,
@@ -45,14 +50,17 @@ async def create_plan(
     db_plan = TravelPlan(user_id=current_user.id, **plan.model_dump())
     db.add(db_plan)
     await db.commit()
-    await db.refresh(db_plan, ["spots"])
+    await db.refresh(db_plan, ["spots", "layer_weather"])
     return db_plan
 
 
 async def _get_owned_plan(plan_id: int, user: User, db: AsyncSession) -> TravelPlan:
     stmt = (
         select(TravelPlan)
-        .options(selectinload(TravelPlan.spots))
+        .options(
+            selectinload(TravelPlan.spots),
+            selectinload(TravelPlan.layer_weather),
+        )
         .where(TravelPlan.id == plan_id, TravelPlan.user_id == user.id)
     )
     result = await db.execute(stmt)
@@ -84,7 +92,7 @@ async def update_plan(
     if plan.end_date < plan.start_date:
         raise HTTPException(status_code=400, detail="end_date must be >= start_date")
     await db.commit()
-    await db.refresh(plan, ["spots"])
+    await db.refresh(plan, ["spots", "layer_weather"])
     return plan
 
 
@@ -161,3 +169,34 @@ async def remove_spot(
         raise HTTPException(status_code=404, detail="Spot not found")
     await db.delete(spot)
     await db.commit()
+
+
+@router.put("/{plan_id}/layers/{plan_date}/weather-spot")
+async def set_layer_weather_spot(
+    plan_id: int,
+    plan_date: str,
+    payload: LayerWeatherSet,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """레이어(plan_date) 의 날씨 표시 기준 spot 설정."""
+    from datetime import date as _date
+
+    await _get_owned_plan(plan_id, current_user, db)
+    try:
+        d = _date.fromisoformat(plan_date)
+    except ValueError:
+        raise HTTPException(400, "plan_date must be YYYY-MM-DD")
+
+    row = await db.get(TravelPlanLayerWeather, (plan_id, d))
+    if row is None:
+        row = TravelPlanLayerWeather(
+            plan_id=plan_id,
+            plan_date=d,
+            weather_spot_id=payload.weather_spot_id,
+        )
+        db.add(row)
+    else:
+        row.weather_spot_id = payload.weather_spot_id
+    await db.commit()
+    return {"ok": True}

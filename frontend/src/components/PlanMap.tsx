@@ -13,10 +13,12 @@ import {
   fetchAccommodationsInBounds,
   fetchPlan,
   fetchWeatherPoints,
+  updateSpot,
 } from "@/lib/api";
 import AppHeader from "./AppHeader";
 import AccommodationDetailModal from "./AccommodationDetailModal";
 import WeatherDetailModal from "./WeatherDetailModal";
+import LayerPanel from "./LayerPanel";
 
 interface Props {
   planId: number;
@@ -41,6 +43,8 @@ export default function PlanMap({ planId }: Props) {
     plan_date: "",
   });
   const [submitting, setSubmitting] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string>("");
+  const [mobileLayerOpen, setMobileLayerOpen] = useState(false);
 
   // accommodation overlay state
   const [accommodations, setAccommodations] = useState<Accommodation[]>([]);
@@ -68,23 +72,26 @@ export default function PlanMap({ planId }: Props) {
     return () => clearInterval(id);
   }, []);
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (initial: boolean = false) => {
+    if (initial) setLoading(true);
     try {
       const data = await fetchPlan(planId);
       setPlan(data);
       if (!poiForm.plan_date) {
         setPoiForm((f) => ({ ...f, plan_date: data.start_date }));
       }
+      if (!selectedDate) {
+        setSelectedDate(data.start_date);
+      }
     } catch (e: any) {
       setError(e.message);
     } finally {
-      setLoading(false);
+      if (initial) setLoading(false);
     }
   };
 
   useEffect(() => {
-    load();
+    load(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planId]);
 
@@ -146,14 +153,14 @@ export default function PlanMap({ planId }: Props) {
         longitude: pendingPoi.lng,
         description: poiForm.description || undefined,
         category: poiForm.category || undefined,
-        plan_date: poiForm.plan_date || undefined,
+        plan_date: poiForm.plan_date || selectedDate || undefined,
       });
       setPendingPoi(null);
       setPoiForm({
         name: "",
         description: "",
         category: "",
-        plan_date: plan.start_date,
+        plan_date: selectedDate || plan.start_date,
       });
       await load();
     } catch (e: any) {
@@ -173,6 +180,47 @@ export default function PlanMap({ planId }: Props) {
     } catch (e: any) {
       setError(e.message);
     }
+  };
+
+  const handleRenameSpot = async (spotId: number, name: string) => {
+    if (!plan) return;
+    await updateSpot(plan.id, spotId, { name });
+    await load();
+  };
+
+  const handleMoveSpot = async (
+    spotId: number,
+    targetDate: string | null,
+    targetOrder: number
+  ) => {
+    if (!plan) return;
+    await updateSpot(plan.id, spotId, {
+      plan_date: targetDate,
+      order: targetOrder,
+    });
+    await load();
+  };
+
+  const handleCopySpot = async (spotId: number, targetDate: string | null) => {
+    if (!plan) return;
+    const src = plan.spots.find((s) => s.id === spotId);
+    if (!src) return;
+    await addSpot(plan.id, {
+      name: src.name,
+      latitude: src.latitude,
+      longitude: src.longitude,
+      description: src.description || undefined,
+      category: src.category || undefined,
+      address: src.address || undefined,
+      plan_date: targetDate || undefined,
+    });
+    await load();
+  };
+
+  const handleLayerDeleteSpot = async (spotId: number) => {
+    if (!plan) return;
+    await deleteSpot(plan.id, spotId);
+    await load();
   };
 
   const handleAddAccommodationToPlan = async (acc: Accommodation) => {
@@ -229,6 +277,13 @@ export default function PlanMap({ planId }: Props) {
     <div className="container">
       <AppHeader />
       <div className="plan-detail-bar">
+        <button
+          className="layer-toggle-mobile"
+          onClick={() => setMobileLayerOpen(true)}
+          aria-label="레이어 열기"
+        >
+          ☰
+        </button>
         <button onClick={() => router.push("/plans")}>← 목록</button>
         <div className="plan-detail-title">
           <strong>{plan.title}</strong>
@@ -250,31 +305,32 @@ export default function PlanMap({ planId }: Props) {
       </div>
 
       <div className="map-container">
-        {/* 좌측 사이드바: 장소 목록 */}
-        <aside className="spots-sidebar">
-          <h3>저장된 장소</h3>
-          {plan.spots.length === 0 ? (
-            <div className="empty-small">
-              지도를 우클릭하여 장소를 추가하세요
-            </div>
-          ) : (
-            <ul>
-              {plan.spots
-                .slice()
-                .sort((a, b) =>
-                  (a.plan_date || "").localeCompare(b.plan_date || "")
-                )
-                .map((s) => (
-                  <li key={s.id} onClick={() => setSelectedSpot(s)}>
-                    <div className="spot-name">{s.name}</div>
-                    {s.plan_date && (
-                      <div className="spot-date">{s.plan_date}</div>
-                    )}
-                  </li>
-                ))}
-            </ul>
-          )}
+        {/* 좌측 레이어 패널 (PC: 항상, 모바일: 드로어) */}
+        <aside
+          className={`layer-sidebar ${mobileLayerOpen ? "mobile-open" : ""}`}
+        >
+          <LayerPanel
+            plan={plan}
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+            onSpotClick={(s) => {
+              setSelectedSpot(s);
+              setSelectedAcc(null);
+            }}
+            onRenameSpot={handleRenameSpot}
+            onMoveSpot={handleMoveSpot}
+            onCopySpot={handleCopySpot}
+            onDeleteSpot={handleLayerDeleteSpot}
+            onLayerWeatherChanged={load}
+            closeMobile={() => setMobileLayerOpen(false)}
+          />
         </aside>
+        {mobileLayerOpen && (
+          <div
+            className="layer-backdrop"
+            onClick={() => setMobileLayerOpen(false)}
+          />
+        )}
 
         <div className="map-area">
           <Map
