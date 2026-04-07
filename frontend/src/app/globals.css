@@ -1093,6 +1093,11 @@ input:disabled {
   color: #666;
 }
 
+.address-marker {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
 .local-results {
   margin-top: 10px;
   padding-top: 8px;
@@ -1100,11 +1105,39 @@ input:disabled {
 }
 
 .local-results-title {
-  font-size: 0.7rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
   font-weight: 700;
-  color: #1ec800;
+  color: #444;
   margin-bottom: 6px;
   letter-spacing: 0.02em;
+}
+
+.source-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: white;
+}
+
+.source-badge.src-naver {
+  background: #1ec800;
+}
+
+.source-badge.src-kakao {
+  background: #fee500;
+  color: #3c1e1e;
+}
+
+.source-badge.src-google {
+  background: #4285f4;
 }
 
 .local-results-list {
@@ -1118,10 +1151,25 @@ input:disabled {
 }
 
 .local-result {
-  background: #f7faf6;
-  border: 1px solid #e2ecdd;
+  background: #fafbfc;
+  border: 1px solid #e3e7ee;
   border-radius: 6px;
   padding: 6px 8px;
+}
+
+.local-results.src-naver .local-result {
+  background: #f7faf6;
+  border-color: #e2ecdd;
+}
+
+.local-results.src-kakao .local-result {
+  background: #fffdf3;
+  border-color: #f0ead0;
+}
+
+.local-results.src-google .local-result {
+  background: #f6f9fe;
+  border-color: #d9e3f5;
 }
 
 .local-result-head {
@@ -1134,7 +1182,7 @@ input:disabled {
 .local-result-title {
   font-weight: 600;
   font-size: 0.8rem;
-  color: #1a5e08;
+  color: #222;
   text-decoration: none;
 }
 
@@ -1144,7 +1192,7 @@ input:disabled {
 
 .local-result-category {
   font-size: 0.66rem;
-  color: #6b7c5b;
+  color: #888;
 }
 
 .local-result-addr {
@@ -1158,6 +1206,46 @@ input:disabled {
   font-size: 0.72rem;
   color: #666;
   margin-top: 2px;
+}
+
+.local-result-links {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.map-link {
+  flex: 1;
+  text-align: center;
+  font-size: 0.66rem;
+  font-weight: 700;
+  padding: 3px 4px;
+  border-radius: 4px;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: filter 0.12s;
+}
+
+.map-link:hover {
+  filter: brightness(0.95);
+}
+
+.map-link.naver {
+  background: #eaf7e3;
+  color: #14760a;
+  border-color: #cfe9c2;
+}
+
+.map-link.kakao {
+  background: #fff8d9;
+  color: #6b5a00;
+  border-color: #f0e8a8;
+}
+
+.map-link.google {
+  background: #e8f0fe;
+  color: #1a4ec2;
+  border-color: #c7d8f4;
 }
 
 /* ============ Layer panel ============ */

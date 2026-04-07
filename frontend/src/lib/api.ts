@@ -338,14 +338,17 @@ export async function setLayerWeatherSpot(
   );
 }
 
-export interface NaverLocalResult {
+export type LocalResultSource = "naver" | "kakao" | "google";
+
+export interface LocalSearchResult {
+  source: LocalResultSource;
   title: string;
   category: string | null;
   description: string | null;
   telephone: string | null;
   address: string | null;
   road_address: string | null;
-  link: string | null;
+  source_link: string | null;
   lat: number | null;
   lng: number | null;
 }
@@ -357,7 +360,9 @@ export interface ReverseGeocodeResult {
   jibun_address: string | null;
   zipcode: string | null;
   local_query: string | null;
-  local_results: NaverLocalResult[];
+  naver_results: LocalSearchResult[];
+  kakao_results: LocalSearchResult[];
+  google_results: LocalSearchResult[];
 }
 
 export async function reverseGeocode(

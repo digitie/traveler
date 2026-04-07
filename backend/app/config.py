@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     vworld_api_key: str = ""
     naver_client_id: str = ""
     naver_client_secret: str = ""
+    kakao_rest_api_key: str = ""
+    google_places_api_key: str = ""
     jwt_secret: str = "traveler-jwt-secret-change-me-in-production"
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24 * 7  # 7 days

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Map, MapMarker, CustomOverlayMap } from "react-kakao-maps-sdk";
 import {
   Accommodation,
+  LocalSearchResult,
   ReverseGeocodeResult,
   TravelPlanDetail,
   TravelPlanSpot,
@@ -29,6 +30,111 @@ interface Props {
 interface PendingPoi {
   lat: number;
   lng: number;
+}
+
+// 외부 지도 서비스 딥링크 생성 (검색 결과를 각 지도 앱/웹에서 열기)
+function naverMapLink(r: LocalSearchResult): string {
+  const q = encodeURIComponent(r.title || "");
+  return `https://map.naver.com/p/search/${q}`;
+}
+
+function kakaoMapLink(r: LocalSearchResult): string {
+  // 카카오맵의 공식 link API: 키워드 검색
+  const q = encodeURIComponent(r.title || "");
+  return `https://map.kakao.com/link/search/${q}`;
+}
+
+function googleMapLink(r: LocalSearchResult): string {
+  // 좌표가 있으면 좌표 + 이름으로, 없으면 이름만 검색
+  const name = encodeURIComponent(r.title || "");
+  if (r.lat != null && r.lng != null) {
+    return `https://www.google.com/maps/search/?api=1&query=${r.lat},${r.lng}(${name})`;
+  }
+  return `https://www.google.com/maps/search/?api=1&query=${name}`;
+}
+
+const SOURCE_LABEL: Record<LocalSearchResult["source"], string> = {
+  naver: "N",
+  kakao: "K",
+  google: "G",
+};
+
+function renderLocalResults(
+  source: LocalSearchResult["source"],
+  title: string,
+  items: LocalSearchResult[]
+) {
+  if (!items || items.length === 0) return null;
+  return (
+    <div className={`local-results src-${source}`}>
+      <div className="local-results-title">
+        <span className={`source-badge src-${source}`}>
+          {SOURCE_LABEL[source]}
+        </span>
+        {title}
+      </div>
+      <ol className="local-results-list">
+        {items.map((r, i) => (
+          <li key={`${source}-${r.title}-${i}`} className="local-result">
+            <div className="local-result-head">
+              {r.source_link ? (
+                <a
+                  href={r.source_link}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="local-result-title"
+                >
+                  {r.title}
+                </a>
+              ) : (
+                <span className="local-result-title">{r.title}</span>
+              )}
+              {r.category && (
+                <span className="local-result-category">{r.category}</span>
+              )}
+            </div>
+            {(r.road_address || r.address) && (
+              <div className="local-result-addr">
+                {r.road_address || r.address}
+              </div>
+            )}
+            {r.telephone && (
+              <div className="local-result-tel">📞 {r.telephone}</div>
+            )}
+            <div className="local-result-links">
+              <a
+                href={naverMapLink(r)}
+                target="_blank"
+                rel="noreferrer"
+                className="map-link naver"
+                title="네이버 지도에서 열기"
+              >
+                네이버
+              </a>
+              <a
+                href={kakaoMapLink(r)}
+                target="_blank"
+                rel="noreferrer"
+                className="map-link kakao"
+                title="카카오맵에서 열기"
+              >
+                카카오
+              </a>
+              <a
+                href={googleMapLink(r)}
+                target="_blank"
+                rel="noreferrer"
+                className="map-link google"
+                title="구글 지도에서 열기"
+              >
+                구글
+              </a>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
 }
 
 export default function PlanMap({ planId }: Props) {
@@ -155,6 +261,10 @@ export default function PlanMap({ planId }: Props) {
       road_address: null,
       jibun_address: null,
       zipcode: null,
+      local_query: null,
+      naver_results: [],
+      kakao_results: [],
+      google_results: [],
       loading: true,
     });
     try {
@@ -167,6 +277,10 @@ export default function PlanMap({ planId }: Props) {
         road_address: null,
         jibun_address: null,
         zipcode: null,
+        local_query: null,
+        naver_results: [],
+        kakao_results: [],
+        google_results: [],
         loading: false,
       });
     }
@@ -586,52 +700,25 @@ export default function PlanMap({ planId }: Props) {
                   ) : (
                     <div className="address-loading">주소를 찾을 수 없음</div>
                   )}
-                  {!addressMarker.loading &&
-                    addressMarker.local_results &&
-                    addressMarker.local_results.length > 0 && (
-                      <div className="local-results">
-                        <div className="local-results-title">
-                          네이버 지역 검색 (정확도순)
-                        </div>
-                        <ol className="local-results-list">
-                          {addressMarker.local_results.map((r, i) => (
-                            <li key={`${r.title}-${i}`} className="local-result">
-                              <div className="local-result-head">
-                                {r.link ? (
-                                  <a
-                                    href={r.link}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="local-result-title"
-                                  >
-                                    {r.title}
-                                  </a>
-                                ) : (
-                                  <span className="local-result-title">
-                                    {r.title}
-                                  </span>
-                                )}
-                                {r.category && (
-                                  <span className="local-result-category">
-                                    {r.category}
-                                  </span>
-                                )}
-                              </div>
-                              {(r.road_address || r.address) && (
-                                <div className="local-result-addr">
-                                  {r.road_address || r.address}
-                                </div>
-                              )}
-                              {r.telephone && (
-                                <div className="local-result-tel">
-                                  📞 {r.telephone}
-                                </div>
-                              )}
-                            </li>
-                          ))}
-                        </ol>
-                      </div>
-                    )}
+                  {!addressMarker.loading && (
+                    <>
+                      {renderLocalResults(
+                        "naver",
+                        "네이버 지역 검색 (정확도순)",
+                        addressMarker.naver_results
+                      )}
+                      {renderLocalResults(
+                        "kakao",
+                        "카카오맵 (정확도순)",
+                        addressMarker.kakao_results
+                      )}
+                      {renderLocalResults(
+                        "google",
+                        "Google Places",
+                        addressMarker.google_results
+                      )}
+                    </>
+                  )}
                   <div className="address-coord">
                     {addressMarker.lat.toFixed(5)},{" "}
                     {addressMarker.lng.toFixed(5)}
