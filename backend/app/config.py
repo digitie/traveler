@@ -7,6 +7,8 @@ class Settings(BaseSettings):
     data_go_kr_api_key: str = ""
     data_ex_api_key: str = ""
     vworld_api_key: str = ""
+    naver_client_id: str = ""
+    naver_client_secret: str = ""
     jwt_secret: str = "traveler-jwt-secret-change-me-in-production"
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24 * 7  # 7 days

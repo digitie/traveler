@@ -586,6 +586,52 @@ export default function PlanMap({ planId }: Props) {
                   ) : (
                     <div className="address-loading">주소를 찾을 수 없음</div>
                   )}
+                  {!addressMarker.loading &&
+                    addressMarker.local_results &&
+                    addressMarker.local_results.length > 0 && (
+                      <div className="local-results">
+                        <div className="local-results-title">
+                          네이버 지역 검색 (정확도순)
+                        </div>
+                        <ol className="local-results-list">
+                          {addressMarker.local_results.map((r, i) => (
+                            <li key={`${r.title}-${i}`} className="local-result">
+                              <div className="local-result-head">
+                                {r.link ? (
+                                  <a
+                                    href={r.link}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="local-result-title"
+                                  >
+                                    {r.title}
+                                  </a>
+                                ) : (
+                                  <span className="local-result-title">
+                                    {r.title}
+                                  </span>
+                                )}
+                                {r.category && (
+                                  <span className="local-result-category">
+                                    {r.category}
+                                  </span>
+                                )}
+                              </div>
+                              {(r.road_address || r.address) && (
+                                <div className="local-result-addr">
+                                  {r.road_address || r.address}
+                                </div>
+                              )}
+                              {r.telephone && (
+                                <div className="local-result-tel">
+                                  📞 {r.telephone}
+                                </div>
+                              )}
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+                    )}
                   <div className="address-coord">
                     {addressMarker.lat.toFixed(5)},{" "}
                     {addressMarker.lng.toFixed(5)}

@@ -338,12 +338,26 @@ export async function setLayerWeatherSpot(
   );
 }
 
+export interface NaverLocalResult {
+  title: string;
+  category: string | null;
+  description: string | null;
+  telephone: string | null;
+  address: string | null;
+  road_address: string | null;
+  link: string | null;
+  lat: number | null;
+  lng: number | null;
+}
+
 export interface ReverseGeocodeResult {
   lat: number;
   lng: number;
   road_address: string | null;
   jibun_address: string | null;
   zipcode: string | null;
+  local_query: string | null;
+  local_results: NaverLocalResult[];
 }
 
 export async function reverseGeocode(
